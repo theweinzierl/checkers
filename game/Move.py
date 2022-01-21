@@ -1,11 +1,13 @@
 from enum import Enum
+from .Stone import *
+
 
 class Move:
     
-    def __init__(self, start: tuple, end: tuple = None, jumpedStone = None) -> None:
-        self._start = start
-        self._end = end
-        self._jumpedStone = jumpedStone
+    def __init__(self, pos: tuple, jumpedStones: list = None, metric:int = 0) -> None:
+        self._pos = pos
+        self._jumpedStones = []
+        self._metric = 0
 
     @property
     def metric(self) -> int:
@@ -16,39 +18,17 @@ class Move:
         self._metric = val
 
     @property
-    def end(self) -> tuple:
-        return self._end
+    def pos(self) -> tuple:
+        return self._pos
 
-    @end.setter
-    def end(self, val: tuple):
-        self._end = val
+    @pos.setter
+    def pos(self, val: tuple):
+        self._pos = val
 
     @property
-    def jumpedStone(self) -> list:
+    def jumpedStones(self) -> list:
         return self._jumpedStones
 
-    @jumpedStone.setter
-    def jumpedStone(self, val: list):
-        self._jumpedStone = val
-
-class Path:
-
-    def __init__(self, type: int = 1) -> None:
-        self._list = []
-        self._type = type
-
-    @property
-    def list(self) -> list:
-        return self._list
-
-    @property
-    def type(self) -> int:
-        return self._type
-
-    @type.setter
-    def type(self, val: int):
-        self._type = val
-    
-    class Type(Enum):
-        Possible = 1
-        Obligate = 2
+    @jumpedStones.setter
+    def jumpedStones(self, val: list):
+        self._jumpedStones = val

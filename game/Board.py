@@ -1,23 +1,15 @@
-
-from importlib.resources import path
-from optparse import check_choice
-import numpy as np
 from .Stone import *
 from tkinter import *
 from enum import Enum
 from .Move import *
 from .PathTree import *
+import random
+from .settings import *
 
-class Board:
 
-    BOARD_SIZE = 8
-    RECT_SIZE = 50
-    CIRCLE_OFFSET = 5
-    RECT_COLORS = ["grey", "red"]
-    CIRCLE_COLORS = ["white", "black"]
-    CIRCLE_COLOR_SELECTED = "blue"
-    PLAYER_A = 0 # AI-Player
-    PLAYER_B = 1 # Human-Player
+
+
+class Board: 
 
     def __init__(self, canvas: Canvas):
         self._board = []
@@ -25,14 +17,16 @@ class Board:
         self._playerB = []
         self._canvas = canvas
         self._selectedStone = None
-        self._turn = Board.PLAYER_B 
+        self._turn = PLAYER_B
+
+        self._score = {PLAYER_A: 0, PLAYER_B: 0}
 
     def start(self) -> None:
         self.initiateBoard()
         print(self._board)
 
     def getPlayerOrientation(self, player):
-        if(player == Board.PLAYER_A):
+        if(player == PLAYER_A):
             return 1
         else:
             return -1 
@@ -41,18 +35,18 @@ class Board:
         self._board = self.createEmptyList()
         posX = 0
         posY = -1
-        for i in range(0,Board.BOARD_SIZE * Board.BOARD_SIZE,2):
+        for i in range(0,BOARD_SIZE * BOARD_SIZE,2):
             
-            if i%Board.BOARD_SIZE == 0: posY += 1
+            if i%BOARD_SIZE == 0: posY += 1
             
             if posY <= 2 or posY >= 5:
-                posX = i%Board.BOARD_SIZE + (1 if posY%2 == 0 else 0) # posY%2 sorgt für eine alternierende Belegung des Brettes
+                posX = i%BOARD_SIZE + (1 if posY%2 == 0 else 0) # posY%2 sorgt für eine alternierende Belegung des Brettes
                 if posY <=2:
-                    tmpStone = Stone(posX, posY, Board.PLAYER_A)
+                    tmpStone = Stone(posX, posY, PLAYER_A)
                     self._playerA.append(tmpStone)
                     self._board[posY][posX] = tmpStone
                 else:
-                    tmpStone = Stone(posX, posY, Board.PLAYER_B)
+                    tmpStone = Stone(posX, posY, PLAYER_B)
                     self._playerB.append(tmpStone)
                     self._board[posY][posX] = tmpStone
 
@@ -60,7 +54,7 @@ class Board:
         tmpList = []
         posY = -1
         for i in range(0,64):
-            if i%Board.BOARD_SIZE == 0: 
+            if i%BOARD_SIZE == 0: 
                 posY += 1
                 tmpList.append([])
 
@@ -72,23 +66,23 @@ class Board:
         posX = 0
         posY = -1
 
-        for i in range(0,Board.BOARD_SIZE * Board.BOARD_SIZE):
-            if i%Board.BOARD_SIZE == 0: posY += 1
+        for i in range(0,BOARD_SIZE * BOARD_SIZE):
+            if i%BOARD_SIZE == 0: posY += 1
 
-            posX = i%Board.BOARD_SIZE
+            posX = i%BOARD_SIZE
             colorIndex = (i + (1 if posY%2 == 0 else 0))%2
 
-            curLeft = posX * Board.RECT_SIZE
-            curRight = posX * Board.RECT_SIZE + Board.RECT_SIZE
-            curTop = posY * Board.RECT_SIZE
-            curBottom = posY * Board.RECT_SIZE + Board.RECT_SIZE
+            curLeft = posX * RECT_SIZE
+            curRight = posX * RECT_SIZE + RECT_SIZE
+            curTop = posY * RECT_SIZE
+            curBottom = posY * RECT_SIZE + RECT_SIZE
 
             curStone = self._board[posY][posX]
 
-            self._canvas.create_rectangle(curLeft, curTop, curRight, curBottom, fill=Board.RECT_COLORS[colorIndex], tags=["board"])
+            self._canvas.create_rectangle(curLeft, curTop, curRight, curBottom, fill=RECT_COLORS[colorIndex], tags=["board"])
 
             if not curStone is None:
-                self._canvas.create_oval(curLeft + Board.CIRCLE_OFFSET, curTop + Board.CIRCLE_OFFSET, curRight - Board.CIRCLE_OFFSET, curBottom - Board.CIRCLE_OFFSET, fill=Board.CIRCLE_COLORS[curStone.team], tags=["stone"])
+                self._canvas.create_oval(curLeft + CIRCLE_OFFSET, curTop + CIRCLE_OFFSET, curRight - CIRCLE_OFFSET, curBottom - CIRCLE_OFFSET, fill=CIRCLE_COLORS[curStone.team], tags=["stone"])
 
     def redrawStones(self):
         self._canvas.delete("stone")
@@ -96,86 +90,130 @@ class Board:
         stones = self._playerA + self._playerB
 
         for i in range(0, len(stones)):
-
+            if not stones[i].isVisible: continue
             posX = stones[i].posX
             posY = stones[i].posY
 
-            curLeft = posX * Board.RECT_SIZE
-            curRight = posX * Board.RECT_SIZE + Board.RECT_SIZE
-            curTop = posY * Board.RECT_SIZE
-            curBottom = posY * Board.RECT_SIZE + Board.RECT_SIZE
+            curLeft = posX * RECT_SIZE
+            curRight = posX * RECT_SIZE + RECT_SIZE
+            curTop = posY * RECT_SIZE
+            curBottom = posY * RECT_SIZE + RECT_SIZE
             
             if stones[i].isSelected:
-                curColor = Board.CIRCLE_COLOR_SELECTED
-                if len(stones[i].cans) > 0: self.drawHelpers(stones[i].cans)
+                curColor = CIRCLE_COLOR_SELECTED
+                if len(stones[i].moves) > 0: self.drawHelpers(stones[i].moves)
                     
             else:
-                curColor = Board.CIRCLE_COLORS[stones[i].team]
+                curColor = CIRCLE_COLORS[stones[i].team]
 
-            self._canvas.create_oval(curLeft + Board.CIRCLE_OFFSET, curTop + Board.CIRCLE_OFFSET, curRight - Board.CIRCLE_OFFSET, curBottom - Board.CIRCLE_OFFSET, fill=curColor, tags=["stone"])
+            self._canvas.create_oval(curLeft + CIRCLE_OFFSET, curTop + CIRCLE_OFFSET, curRight - CIRCLE_OFFSET, curBottom - CIRCLE_OFFSET, fill=curColor, tags=["stone"])
 
+            if stones[i].type == Stone.Type.King:
+                self._canvas.create_oval(curLeft + KING_OFFSET, curTop + KING_OFFSET, curRight - KING_OFFSET, curBottom - KING_OFFSET, fill=KING_COLOR, tags=["stone"])
+                
 
-    def drawHelpers(self, fields):
-        for i in range(0, len(fields)):
-            posX = fields[i][1]
-            posY = fields[i][0]
+    def drawHelpers(self, moves: list):
+        for i in range(0, len(moves)):
+            posX = moves[i].pos[1]
+            posY = moves[i].pos[0]
 
-            curLeft = posX * Board.RECT_SIZE
-            curRight = posX * Board.RECT_SIZE + Board.RECT_SIZE
-            curTop = posY * Board.RECT_SIZE
-            curBottom = posY * Board.RECT_SIZE + Board.RECT_SIZE
+            curLeft = posX * RECT_SIZE
+            curRight = posX * RECT_SIZE + RECT_SIZE
+            curTop = posY * RECT_SIZE
+            curBottom = posY * RECT_SIZE + RECT_SIZE
 
-            self._canvas.create_oval(curLeft + Board.CIRCLE_OFFSET, curTop + Board.CIRCLE_OFFSET, curRight - Board.CIRCLE_OFFSET, curBottom - Board.CIRCLE_OFFSET, tags=["stone"])
+            self._canvas.create_oval(curLeft + CIRCLE_OFFSET, curTop + CIRCLE_OFFSET, curRight - CIRCLE_OFFSET, curBottom - CIRCLE_OFFSET, tags=["stone"])
 
 
 
     def onClick(self, event):
-        if self._turn != Board.PLAYER_B: return # not your turn!
+        if self._turn != PLAYER_B: return # not your turn!
 
-        posX = int(event.x/Board.RECT_SIZE)
-        posY = int(event.y/Board.RECT_SIZE)
+        posX = int(event.x/RECT_SIZE)
+        posY = int(event.y/RECT_SIZE)
 
-        if not self._board[posY][posX] is None and self._board[posY][posX].team == Board.PLAYER_B:
+        selectedTile = self._board[posY][posX]
+
+        if not selectedTile is None: # and selectedTile.team == PLAYER_B: # selected tile is stone
             if not self._selectedStone is None: self._selectedStone.isSelected = False
-            self._selectedStone = self._board[posY][posX]
-            self._board[posY][posX].isSelected = True
+            self._selectedStone = selectedTile
+            self._selectedStone.isSelected = True
             
-            self.detectPossibleMoves(self._board[posY][posX])
+            self._selectedStone.pathTree = self.buildPathTree(self._selectedStone)
             self.redrawStones()
-        elif self._board[posY][posX] is None and not self._selectedStone is None:
-            if (posY, posX) in self._selectedStone.cans:
-                # valid move!
-                self._board[posY][posX] = self._selectedStone
-                self._board[self._selectedStone.posY][self._selectedStone.posX] = None
-                self._selectedStone.posX = posX
-                self._selectedStone.posY = posY
-                self._selectedStone.isSelected = False
-                self._selectedStone = None
-                self.redrawStones()
+
+        elif selectedTile is None and not self._selectedStone is None: # selected tile is not stone            
+            self.executeMove((posY, posX), self._selectedStone)
 
 
+    def executeMove(self, pos, stone):
+        selectedMove = stone.getMove(pos)
+        if not selectedMove is None:    
+            print ("is in moves!")
 
+            self._score[stone.team] += len(selectedMove.jumpedStones)
+
+            # vanish jumped stones
+            for jumpedStone in selectedMove.jumpedStones:
+                jumpedStone.isVisible = False
+                self._board[jumpedStone.posY][jumpedStone.posX] = None
+
+            
+
+
+       # if stone.team == PLAYER_B:
+            # valid move!
+        self._board[pos[0]][pos[1]] = stone
+        self._board[stone.posY][stone.posX] = None
+        stone.posX = pos[1]
+        stone.posY = pos[0]
+        stone.isSelected = False
+        self._selectedStone = None
+        self.redrawStones()
+        self.changeTurn()
 
 
     def changeTurn(self):
-        if self._turn == Board.PLAYER_A:
-            self._turn = Board.PLAYER_B
+        if self._turn == PLAYER_A:
+            self._turn = PLAYER_B
         else:
-            self._turn = Board.PLAYER_A
+            self._turn = PLAYER_A
             self.invokeAI()
 
     def invokeAI(self):
-        print("yay")
+        # refresh Moves
+        best = (0, None, None)
+        moveable = []
+        for stone in self._playerA:
+            if not stone.isVisible: continue
+
+            stone.pathTree = self.buildPathTree(stone)
+            if stone.moves != []:
+                for move in stone.moves:
+                    if move.metric > best[0]:
+                        best = (move.metric, move, stone)
+                moveable.append(stone)
+
+        if best[0] > 0:
+            self.executeMove(best[1].pos, best[2])
+        else:
+            rndStone = random.choice(moveable)
+            rndMove = random.choice(rndStone.moves)
+            self.executeMove(rndMove.pos, rndStone)
+
+        print("executed")
+       
+
 
     def buildPathTree(self, stone: Stone) -> PathTree:
         tmpPathTree = PathTree(stone.pos)
 
-        tmpPathTree.root.add(self.startBuildingRecursion(tmpPathTree.root, stone))
+        self.startBuildingRecursion(tmpPathTree.root, stone)
 
         return tmpPathTree
 
 
-    def startBuildingRecursion(self, parent: PathTreeNode, stone: Stone) -> None:
+    def startBuildingRecursion(self, parent: PathTreeNode, stone: Stone, foundEnemy: bool = False) -> None:
 
         orientation = self.getPlayerOrientation(stone.team)
 
@@ -184,7 +222,7 @@ class Board:
             afternext = [(parent.pos[0] + 2 * orientation, parent.pos[1] - 2 ), (parent.pos[0] + 2 * orientation, parent.pos[1] + 2)]
         else:
             next = [(parent.pos[0] + 1 , parent.pos[1] - 1), (parent.pos[0] + 1, parent.pos[1]  + 1), (parent.pos[0] - 1, parent.pos[1] - 1), (parent.pos[0] - 1, parent.pos[1] + 1)]
-            afternext = next = [(parent.pos[0] + 2 , parent.pos[1] - 2), (parent.pos[0] + 2, parent.pos[1]  + 2), (parent.pos[0] - 2, parent.pos[1] - 2), (parent.pos[0] - 2, parent.pos[1] + 2)]
+            afternext = [(parent.pos[0] + 2 , parent.pos[1] - 2), (parent.pos[0] + 2, parent.pos[1]  + 2), (parent.pos[0] - 2, parent.pos[1] - 2), (parent.pos[0] - 2, parent.pos[1] + 2)]
 
         for i in range (0, len(next)):
 
@@ -199,19 +237,20 @@ class Board:
                 if self.checkIndexInRange(afternext[i]) and self.checkCollision(stone, afternext[i][1], afternext[i][0]) == Board.CollisionType.Nothing:
                     # enemy can be jumped
                     
-                    tmpNode = PathTreeNode(afternext, parent, self._board[next[i][0], next[i][1]])
+                    tmpNode = PathTreeNode(afternext[i], parent, self._board[next[i][0]][next[i][1]])
                     parent.add(tmpNode)
-                    self.startBuildingRecursion(self, tmpNode, stone) # start recursion here to find all possible moves
+                    self.startBuildingRecursion(tmpNode, stone, True) # start recursion here to find all possible moves
 
                 else: # enemy can not be jumped                    
                     continue
-                
-            parent.add(PathTreeNode(next, parent)) # none of the upper cases applied => normal move
+            else:
+                # if an enemy was found, only this path can be followed!
+                if not foundEnemy: parent.add(PathTreeNode(next[i], parent)) # none of the upper cases applied => normal move
 
 
-    def checkIndexInRange(pos: tuple) -> bool:
-        if pos[1] < 0 or pos[1] > Board.BOARD_SIZE - 1: return False
-        if pos[0] < 0 or pos[0] > Board.BOARD_SIZE - 1: return False
+    def checkIndexInRange(self, pos: tuple) -> bool:
+        if pos[1] < 0 or pos[1] > BOARD_SIZE - 1: return False
+        if pos[0] < 0 or pos[0] > BOARD_SIZE - 1: return False
         
         return True
 

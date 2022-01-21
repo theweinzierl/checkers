@@ -1,5 +1,7 @@
 from enum import Enum
 from .Move import *
+from .PathTree import *
+from .settings import *
 
 
 class Stone:
@@ -10,24 +12,10 @@ class Stone:
         self._team = team
         self._isSelected = False
         self._type = Stone.Type.Normal
-        self._cans = []
-        self._havetos = []
+        self._pathTree = None
+        self._isVisible = True
+        self._moves = []
 
-    @property
-    def cans(self) -> list:
-        return self._cans
-
-    @cans.setter
-    def cans(self, val: list):
-        self._cans = val
-
-    @property
-    def havetos(self) -> list:
-        return self._havetos
-
-    @havetos.setter
-    def havetos(self, val: list):
-        self._havetos = val
 
     @property
     def posX(self) -> int:
@@ -44,6 +32,10 @@ class Stone:
     @posY.setter
     def posY(self, val: int):
         self._posY = val
+        if self._posY == 0 and self._team == PLAYER_B:
+            self.makeKing()
+        elif self._posY == BOARD_SIZE -1 and self._team == PLAYER_A:
+            self.makeKing()
 
     @property
     def team(self) -> int:
@@ -66,9 +58,36 @@ class Stone:
         return self._type
 
     @property
-    def pos(self) -> tuple(int):
+    def pos(self) -> tuple:
         return (self._posY, self._posX)
+
+    @property
+    def pathTree(self) -> PathTree:
+        return self._pathTree
+
+    @pathTree.setter
+    def pathTree(self, val: PathTree):
+        self._pathTree = val
+        self._moves = self._pathTree.getMoves()
     
+    @property
+    def moves(self) -> list:
+        return self._moves
+
+    @property
+    def isVisible(self) -> bool:
+        return self._isVisible
+
+    @isVisible.setter
+    def isVisible(self, val: bool):
+        self._isVisible = val
+
+    def getMove(self, pos: tuple) -> Move:
+        for move in self._moves:
+            if move.pos == pos:
+                return move
+        return None
+
     def makeKing(self):
         self._type = Stone.Type.King
 
