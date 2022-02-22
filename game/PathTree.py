@@ -2,8 +2,9 @@ from .Stone import *
 from .Move import *
 
 class PathTree:
-    def __init__(self, pos: tuple) -> None:
+    def __init__(self, pos: tuple, stone) -> None:
         self._root = PathTreeNode(pos)
+        self._stone = stone
         
     @property
     def root(self):
@@ -13,8 +14,9 @@ class PathTree:
         leafes = self.getLeafes()
         preselectedMoves = []
         for i in range(0, len(leafes)):
-            tmpMove = Move(leafes[i].pos)
+            tmpMove = Move(leafes[i].pos, self._stone)
             self.getMoveRec(tmpMove, leafes[i])
+            tmpMove.evaluate()
             preselectedMoves.append(tmpMove)
 
         # filter for obligated moves

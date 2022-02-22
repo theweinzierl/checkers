@@ -15,6 +15,7 @@ class Stone:
         self._pathTree = None
         self._isVisible = True
         self._moves = []
+        self._origin = (posY, posX)
 
 
     @property
@@ -91,7 +92,9 @@ class Stone:
     def makeKing(self):
         self._type = Stone.Type.King
 
-
+    def restoreOrigin(self):
+        self._posX = self._origin[1]
+        self._posY = self._origin[0]
         
 
     class Type(Enum):

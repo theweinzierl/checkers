@@ -1,37 +1,45 @@
+from time import sleep
 from .Stone import *
 from tkinter import *
 from enum import Enum
 from .Move import *
 from .PathTree import *
-import random
 from .settings import *
+from .Brain import *
 
 
 
 
 class Board: 
+    class Mode(Enum):
+        BotGame = 1
+        OneOnOne = 2
 
-    def __init__(self, canvas: Canvas):
+    def __init__(self, canvas: Canvas, mode: Mode) -> None:
         self._board = []
         self._playerA = []
         self._playerB = []
         self._canvas = canvas
         self._selectedStone = None
         self._turn = PLAYER_B
+        self._mode = mode
 
-        self._score = {PLAYER_A: 0, PLAYER_B: 0}
+        self._score = {PLAYER_A: 0, PLAYER_B: 0} # Player A => Computer; Player B => Human
+        self._brain = Brain(self)
 
+    
     def start(self) -> None:
-        self.initiateBoard()
+        self.iniBoard()
+        self.draw()
         print(self._board)
 
-    def getPlayerOrientation(self, player):
-        if(player == PLAYER_A):
-            return 1
-        else:
-            return -1 
 
-    def initiateBoard(self) -> None:
+
+    """
+        Initialisiert das Spielbrett
+        Dabei wird ein zweidimensionales Array mit den Steinen besetzt. Leere Felder haben den Wert None.
+    """
+    def iniBoard(self) -> None:
         self._board = self.createEmptyList()
         posX = 0
         posY = -1
@@ -50,6 +58,10 @@ class Board:
                     self._playerB.append(tmpStone)
                     self._board[posY][posX] = tmpStone
 
+    """
+        Erstellt eine zweidimensionale Liste
+        Die Felder werden mit None belegt. Die Schachtelung ist wie folgt: [Reihe][Spalte] bzw. [Y-Wert][X-Wert]
+    """
     def createEmptyList(self) -> list:
         tmpList = []
         posY = -1
@@ -62,6 +74,10 @@ class Board:
 
         return tmpList
 
+    """
+        Zeichnet das Spielbrett
+        Draw zeichnet erstmalig das Spielbrett und alle Steine. Alle weiteren Aktualisierungen der Steine werden durch redrawStones() übernommen.
+    """
     def draw(self):
         posX = 0
         posY = -1
@@ -84,6 +100,10 @@ class Board:
             if not curStone is None:
                 self._canvas.create_oval(curLeft + CIRCLE_OFFSET, curTop + CIRCLE_OFFSET, curRight - CIRCLE_OFFSET, curBottom - CIRCLE_OFFSET, fill=CIRCLE_COLORS[curStone.team], tags=["stone"])
 
+    """
+        Zeichnet die Steine neu
+        Dabei wird ein zweidimensionales Array mit den Steinen besetzt. Leere Felder haben den Wert None.
+    """
     def redrawStones(self):
         self._canvas.delete("stone")
 
@@ -111,7 +131,9 @@ class Board:
             if stones[i].type == Stone.Type.King:
                 self._canvas.create_oval(curLeft + KING_OFFSET, curTop + KING_OFFSET, curRight - KING_OFFSET, curBottom - KING_OFFSET, fill=KING_COLOR, tags=["stone"])
                 
-
+    """
+        Zeichnet die die möglichen Sprünge ein.
+    """
     def drawHelpers(self, moves: list):
         for i in range(0, len(moves)):
             posX = moves[i].pos[1]
@@ -125,8 +147,11 @@ class Board:
             self._canvas.create_oval(curLeft + CIRCLE_OFFSET, curTop + CIRCLE_OFFSET, curRight - CIRCLE_OFFSET, curBottom - CIRCLE_OFFSET, tags=["stone"])
 
 
-
+    """
+        onClick-Callback für das Canvas-Klickereignis
+    """
     def onClick(self, event):
+        print("hllo")
         if self._turn != PLAYER_B: return # not your turn!
 
         posX = int(event.x/RECT_SIZE)
@@ -139,133 +164,45 @@ class Board:
             self._selectedStone = selectedTile
             self._selectedStone.isSelected = True
             
-            self._selectedStone.pathTree = self.buildPathTree(self._selectedStone)
+            self._selectedStone.pathTree = self._brain.buildPathTree(self._selectedStone)
             self.redrawStones()
 
         elif selectedTile is None and not self._selectedStone is None: # selected tile is not stone            
-            self.executeMove((posY, posX), self._selectedStone)
+            self.executeMove(self._selectedStone.getMove((posY, posX)))
 
 
-    def executeMove(self, pos, stone):
-        selectedMove = stone.getMove(pos)
-        if not selectedMove is None:    
-            print ("is in moves!")
+    def executeMove(self, move: Move) -> None:
 
-            self._score[stone.team] += len(selectedMove.jumpedStones)
+        if move is None: return
 
-            # vanish jumped stones
-            for jumpedStone in selectedMove.jumpedStones:
-                jumpedStone.isVisible = False
-                self._board[jumpedStone.posY][jumpedStone.posX] = None
+        stone = move.stone
 
-            
+        self._score[stone.team] += len(move.jumpedStones)
+
+        # vanish jumped stones
+        for jumpedStone in move.jumpedStones:
+            jumpedStone.isVisible = False
+            self._board[jumpedStone.posY][jumpedStone.posX] = None           
 
 
        # if stone.team == PLAYER_B:
             # valid move!
-        self._board[pos[0]][pos[1]] = stone
+        self._board[move.pos[0]][move.pos[1]] = stone
         self._board[stone.posY][stone.posX] = None
-        stone.posX = pos[1]
-        stone.posY = pos[0]
+        stone.posX = move.pos[1]
+        stone.posY = move.pos[0]
         stone.isSelected = False
         self._selectedStone = None
-        self.redrawStones()
+        
         self.changeTurn()
 
 
     def changeTurn(self):
+        self.redrawStones()
         if self._turn == PLAYER_A:
             self._turn = PLAYER_B
         else:
             self._turn = PLAYER_A
-            self.invokeAI()
-
-    def invokeAI(self):
-        # refresh Moves
-        best = (0, None, None)
-        moveable = []
-        for stone in self._playerA:
-            if not stone.isVisible: continue
-
-            stone.pathTree = self.buildPathTree(stone)
-            if stone.moves != []:
-                for move in stone.moves:
-                    if move.metric > best[0]:
-                        best = (move.metric, move, stone)
-                moveable.append(stone)
-
-        if best[0] > 0:
-            self.executeMove(best[1].pos, best[2])
-        else:
-            rndStone = random.choice(moveable)
-            rndMove = random.choice(rndStone.moves)
-            self.executeMove(rndMove.pos, rndStone)
-
-        print("executed")
-       
+            self._brain.invokeAI()
 
 
-    def buildPathTree(self, stone: Stone) -> PathTree:
-        tmpPathTree = PathTree(stone.pos)
-
-        self.startBuildingRecursion(tmpPathTree.root, stone)
-
-        return tmpPathTree
-
-
-    def startBuildingRecursion(self, parent: PathTreeNode, stone: Stone, foundEnemy: bool = False) -> None:
-
-        orientation = self.getPlayerOrientation(stone.team)
-
-        if stone.type == Stone.Type.Normal:
-            next = [(parent.pos[0] + 1 * orientation, parent.pos[1] - 1 ), (parent.pos[0] + 1 * orientation, parent.pos[1] + 1)]
-            afternext = [(parent.pos[0] + 2 * orientation, parent.pos[1] - 2 ), (parent.pos[0] + 2 * orientation, parent.pos[1] + 2)]
-        else:
-            next = [(parent.pos[0] + 1 , parent.pos[1] - 1), (parent.pos[0] + 1, parent.pos[1]  + 1), (parent.pos[0] - 1, parent.pos[1] - 1), (parent.pos[0] - 1, parent.pos[1] + 1)]
-            afternext = [(parent.pos[0] + 2 , parent.pos[1] - 2), (parent.pos[0] + 2, parent.pos[1]  + 2), (parent.pos[0] - 2, parent.pos[1] - 2), (parent.pos[0] - 2, parent.pos[1] + 2)]
-
-        for i in range (0, len(next)):
-
-            if not self.checkIndexInRange(next[i]): continue # position out of board
-
-            col = self.checkCollision(stone, next[i][1], next[i][0])
-            
-            if col == Board.CollisionType.Friend: # position blocked by own stone
-                continue
-            elif col == Board.CollisionType.Enemy: # position blocked by enemy => jumpable?
-
-                if self.checkIndexInRange(afternext[i]) and self.checkCollision(stone, afternext[i][1], afternext[i][0]) == Board.CollisionType.Nothing:
-                    # enemy can be jumped
-                    
-                    tmpNode = PathTreeNode(afternext[i], parent, self._board[next[i][0]][next[i][1]])
-                    parent.add(tmpNode)
-                    self.startBuildingRecursion(tmpNode, stone, True) # start recursion here to find all possible moves
-
-                else: # enemy can not be jumped                    
-                    continue
-            else:
-                # if an enemy was found, only this path can be followed!
-                if not foundEnemy: parent.add(PathTreeNode(next[i], parent)) # none of the upper cases applied => normal move
-
-
-    def checkIndexInRange(self, pos: tuple) -> bool:
-        if pos[1] < 0 or pos[1] > BOARD_SIZE - 1: return False
-        if pos[0] < 0 or pos[0] > BOARD_SIZE - 1: return False
-        
-        return True
-
-    
-    def checkCollision(self, stone, posX, posY) -> int:
-    
-        if not self._board[posY][posX] is None:
-            if self._board[posY][posX].team == stone.team:
-                return Board.CollisionType.Friend
-            else:
-                return Board.CollisionType.Enemy
-        else:
-            return Board.CollisionType.Nothing
-
-    class CollisionType(Enum):
-        Nothing = 1
-        Friend = 2
-        Enemy = 3

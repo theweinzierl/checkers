@@ -8,3 +8,4 @@ KING_COLOR = ["gold"]
 CIRCLE_COLOR_SELECTED = "blue"
 PLAYER_A = 0 # AI-Player
 PLAYER_B = 1 # Human-Player
+MINIMAX_DEPTH = 4
