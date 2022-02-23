@@ -47,11 +47,11 @@ class Move:
         tmpMetric += noOfJumpedStones * 1000 
 
         # Sprung ins Zentrum?
-        if self.isCenterJump:
+        if self.isCenterJump():
             tmpMetric += 100
         
         # King-Sprung? Nur relevant, wenn noch kein King!
-        if self.isKingJump and self._stone.type != 2: # 2 => King
+        if self.isKingJump() and self._stone.type != 2: # 2 => King
             tmpMetric += 100
 
         # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster

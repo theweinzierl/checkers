@@ -36,7 +36,7 @@ class Brain:
         return tmpPathTree
 
 
-    def buildPathTreeRec(self, parent: PathTreeNode, stone: Stone, foundEnemy: bool = False) -> None:
+    def buildPathTreeRec(self, parent: PathTreeNode, stone: Stone, foundEnemy: bool = False, depth: int = 5) -> None:
 
         orientation = self.getPlayerOrientation(stone.team)
 
@@ -59,14 +59,15 @@ class Brain:
 
                 if self.checkIndexInRange(afternext[i]) and self.checkCollision(stone, afternext[i][1], afternext[i][0]) == Brain.CollisionType.Nothing:
                     # enemy can be jumped
-                    
+                    if depth == 0: continue
+
                     if not parent.jumpedStone is None and self._boardObj._board[next[i][0]][next[i][1]] != parent.jumpedStone:
                         # verhindern, dass übersprungener Stein von einem König wieder zurück übersprungen werden kann und es zu einer Endlosschleife kommt!
                         continue
 
                     tmpNode = PathTreeNode(afternext[i], parent, self._boardObj._board[next[i][0]][next[i][1]])
                     parent.add(tmpNode)
-                    self.buildPathTreeRec(tmpNode, stone, True) # start recursion here to find all possible moves
+                    self.buildPathTreeRec(tmpNode, stone, True, depth - 1) # start recursion here to find all possible moves
 
                 else: # enemy can not be jumped                    
                     continue
@@ -92,10 +93,10 @@ class Brain:
         else:
             return Brain.CollisionType.Nothing
 
-    def invokeAI(self):
+    def invokeAI(self, player):
         self._max = None
 
-        self.max(None, self._boardObj._playerA, self._boardObj._board, 1)
+        self.max(None, player, self._boardObj._board, MINIMAX_DEPTH)
         self._boardObj.executeMove(self._max)
 
 

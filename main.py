@@ -55,7 +55,7 @@ def showGame(mode: Board.Mode) -> None:
     if not canvasMenu is None:
         canvasMenu.pack_forget()
 
-    board = Board(canvasBoard, mode)
+    board = Board(canvasBoard, mode, window)
     canvasBoard.bind("<Button-1>", board.onClick)
     board.start()
     

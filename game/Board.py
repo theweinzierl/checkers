@@ -1,4 +1,4 @@
-from time import sleep
+
 from .Stone import *
 from tkinter import *
 from enum import Enum
@@ -15,7 +15,7 @@ class Board:
         BotGame = 1
         OneOnOne = 2
 
-    def __init__(self, canvas: Canvas, mode: Mode) -> None:
+    def __init__(self, canvas: Canvas, mode: Mode, window: Tk) -> None:
         self._board = []
         self._playerA = []
         self._playerB = []
@@ -23,6 +23,7 @@ class Board:
         self._selectedStone = None
         self._turn = PLAYER_B
         self._mode = mode
+        self._window = window
 
         self._score = {PLAYER_A: 0, PLAYER_B: 0} # Player A => Computer; Player B => Human
         self._brain = Brain(self)
@@ -31,7 +32,10 @@ class Board:
     def start(self) -> None:
         self.iniBoard()
         self.draw()
-        print(self._board)
+        
+        if self._mode == Board.Mode.BotGame:
+            self._window.after(BOT_DELAY, lambda: self._brain.invokeAI(self._playerB))
+
 
 
 
@@ -94,7 +98,7 @@ class Board:
             curBottom = posY * RECT_SIZE + RECT_SIZE
 
             curStone = self._board[posY][posX]
-            if not self._board[posY][posX] is None: colorIndex = 2
+
             self._canvas.create_rectangle(curLeft, curTop, curRight, curBottom, fill=RECT_COLORS[colorIndex], tags=["board"])
 
             if not curStone is None:
@@ -151,7 +155,7 @@ class Board:
         onClick-Callback für das Canvas-Klickereignis
     """
     def onClick(self, event):
-        print("hllo")
+
         if self._turn != PLAYER_B: return # not your turn!
 
         posX = int(event.x/RECT_SIZE)
@@ -159,7 +163,7 @@ class Board:
 
         selectedTile = self._board[posY][posX]
 
-        if not selectedTile is None: # and selectedTile.team == PLAYER_B: # selected tile is stone
+        if not selectedTile is None and selectedTile.team == PLAYER_B: # selected tile is stone
             if not self._selectedStone is None: self._selectedStone.isSelected = False
             self._selectedStone = selectedTile
             self._selectedStone.isSelected = True
@@ -195,7 +199,6 @@ class Board:
         stone.origin = move.pos # Ausführung eines Zuges muss persistent sein!
         stone.isSelected = False
         self._selectedStone = None
-        
         self.changeTurn()
 
 
@@ -203,8 +206,10 @@ class Board:
         self.redrawStones()
         if self._turn == PLAYER_A:
             self._turn = PLAYER_B
+            if self._mode == Board.Mode.BotGame:
+                self._window.after(BOT_DELAY, lambda: self._brain.invokeAI(self._playerB))
         else:
             self._turn = PLAYER_A
-            self._brain.invokeAI()
+            self._window.after(BOT_DELAY, lambda: self._brain.invokeAI(self._playerA))
 
 
