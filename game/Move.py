@@ -1,7 +1,8 @@
 from enum import Enum
 from .Stone import *
 from .settings import *
- 
+import random 
+
 class Move:
     
     def __init__(self, pos: tuple, stone, jumpedStones: list = None) -> None:
@@ -49,8 +50,14 @@ class Move:
         if self.isCenterJump:
             tmpMetric += 100
         
-        if self.isKingJump:
+        # King-Sprung? Nur relevant, wenn noch kein King!
+        if self.isKingJump and self._stone.type != 2: # 2 => King
             tmpMetric += 100
+
+        # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster
+        tmpMetric += random.randrange(0,50)
+
+        
 
         self._metric = tmpMetric
 

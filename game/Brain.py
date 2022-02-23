@@ -1,7 +1,7 @@
 from .Board import *
 from .PathTree import *
 from .Stone import *
-
+from .Move import *
 from .settings import *
 from game import settings
 
@@ -60,6 +60,10 @@ class Brain:
                 if self.checkIndexInRange(afternext[i]) and self.checkCollision(stone, afternext[i][1], afternext[i][0]) == Brain.CollisionType.Nothing:
                     # enemy can be jumped
                     
+                    if not parent.jumpedStone is None and self._boardObj._board[next[i][0]][next[i][1]] != parent.jumpedStone:
+                        # verhindern, dass übersprungener Stein von einem König wieder zurück übersprungen werden kann und es zu einer Endlosschleife kommt!
+                        continue
+
                     tmpNode = PathTreeNode(afternext[i], parent, self._boardObj._board[next[i][0]][next[i][1]])
                     parent.add(tmpNode)
                     self.buildPathTreeRec(tmpNode, stone, True) # start recursion here to find all possible moves
@@ -90,9 +94,10 @@ class Brain:
 
     def invokeAI(self):
         self._max = None
-        self.max(None, self._boardObj._playerA, 1)
+
+        self.max(None, self._boardObj._playerA, self._boardObj._board, 1)
         self._boardObj.executeMove(self._max)
-        self._boardObj.changeTurn()
+
 
     """
         Gibt alle spielbaren Steine eines Spielers zurück
@@ -107,25 +112,39 @@ class Brain:
                 moveable.append(move)
 
         return moveable
+        
 
-    def max(self, parentMove: Move, stones: list, depth: int) -> Move:
+    def max(self, parentMove: Move, stones: list, board, depth: int) -> Move:
         
         moveables = self.getPossibleMoves(stones)
+
+        # Schlagzwang checken!
+        if parentMove is None:
+            obligateMove = None
+            for move in moveables:
+                if move.metric > 1000: # Schlagzwang!
+                    if (obligateMove is None or obligateMove.metric < move.metric):
+                        obligateMove = move
+            if not obligateMove is None:
+                self._max = obligateMove
+                return 
 
         if len(moveables) == 0 or depth == 0:
             return parentMove 
         
         maxMove = None
         for move in moveables:
-            self.simExecuteMove(move)
-            minMove = self.min(move, self.changeTurn(stones), depth - 1)            
-            self.undoSimExecuteMove(move)
+            self.simExecuteMove(move, board)
+            minMove = self.min(move, self.changeTurn(stones), board, depth - 1)            
+            self.undoSimExecuteMove(move, board)
             if (maxMove is None or maxMove.metric < minMove.metric) and parentMove is None:
-                self._max = maxMove
+                maxMove = minMove
+                self._max = move
+        
         moveables.sort(key=lambda x: x.metric)
         return moveables[0]
     
-    def min(self, parentMove: Move, stones: list, depth: int) -> Move:
+    def min(self, parentMove: Move, stones: list, board, depth: int) -> Move:
         
         moveables = self.getPossibleMoves(stones)
 
@@ -133,37 +152,36 @@ class Brain:
             return parentMove 
         
         for move in moveables:
-            self.simExecuteMove(move)
-            self.max(move, self.changeTurn(stones), depth - 1)            
-            self.undoSimExecuteMove(move)
+            self.simExecuteMove(move, board)
+            self.max(move, self.changeTurn(stones), board, depth - 1)            
+            self.undoSimExecuteMove(move, board)
 
         moveables.sort(key=lambda x: x.metric, reverse=True)
         return moveables[0]
 
 
-    def simExecuteMove(self, move: Move):
+    def simExecuteMove(self, move: Move, board):        
+         
+        for jumpedStone in move.jumpedStones:
+            jumpedStone.isVisible = False
+            board[jumpedStone.posY][jumpedStone.posX] = None
+
+        board[move.pos[0]][move.pos[1]] = move.stone
+        board[move.stone.posY][move.stone.posX] = None
+        move.stone.posX = move.pos[1]
+        move.stone.posY = move.pos[0]
+
+
+    def undoSimExecuteMove(self, move: Move, board):
+         
+        for jumpedStone in move.jumpedStones:
+            jumpedStone.isVisible = True
+            board[jumpedStone.posY][jumpedStone.posX] = jumpedStone
+
+        board[move.pos[0]][move.pos[1]] = None
+        move.stone.restoreOrigin()
+        board[move.stone.posY][move.stone.posX] = move.stone
         
-        if not move is None:    
-            for jumpedStone in move.jumpedStones:
-                jumpedStone.isVisible = False
-                self._boardObj._board[jumpedStone.posY][jumpedStone.posX] = None
-
-            self._boardObj._board[move.pos[0]][move.pos[1]] = move.stone
-            self._boardObj._board[move.stone.posY][move.stone.posX] = None
-            move.stone.posX = move.pos[1]
-            move.stone.posY = move.pos[0]
-
-
-    def undoSimExecuteMove(self, move: Move):
-
-        if not move is None:    
-            for jumpedStone in move.jumpedStones:
-                jumpedStone.isVisible = True
-                self._boardObj._board[jumpedStone.posY][jumpedStone.posX] = jumpedStone
-
-            self._boardObj._board[move.pos[0]][move.pos[1]] = None
-            self._boardObj._board[move.stone.posY][move.stone.posX] = move.stone
-            move.stone.restoreOrigin()
 
     def changeTurn(self, player: list) -> list:
         if player == self._boardObj._playerA:

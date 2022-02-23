@@ -6,6 +6,10 @@ from .settings import *
 
 class Stone:
 
+    class Type(Enum):
+        Normal = 1
+        King = 2
+
     def __init__(self, posX: int, posY: int, team: int):
         self._posX = posX
         self._posY = posY
@@ -33,10 +37,7 @@ class Stone:
     @posY.setter
     def posY(self, val: int):
         self._posY = val
-        if self._posY == 0 and self._team == PLAYER_B:
-            self.makeKing()
-        elif self._posY == BOARD_SIZE -1 and self._team == PLAYER_A:
-            self.makeKing()
+        
 
     @property
     def team(self) -> int:
@@ -45,6 +46,18 @@ class Stone:
     @team.setter
     def team(self, val: int):
         self._team = val
+
+    @property
+    def origin(self) -> tuple:
+        return self._origin
+
+    @origin.setter
+    def origin(self, val: tuple):
+        self._origin = val
+        if val[0] == 0 and self._team == PLAYER_B:
+            self.makeKing()
+        elif val[0] == BOARD_SIZE -1 and self._team == PLAYER_A:
+            self.makeKing()
 
     @property
     def isSelected(self) -> bool:
@@ -97,6 +110,4 @@ class Stone:
         self._posY = self._origin[0]
         
 
-    class Type(Enum):
-        Normal = 1
-        King = 2
+    

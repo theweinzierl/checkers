@@ -87,14 +87,14 @@ class Board:
 
             posX = i%BOARD_SIZE
             colorIndex = (i + (1 if posY%2 == 0 else 0))%2
-
+            
             curLeft = posX * RECT_SIZE
             curRight = posX * RECT_SIZE + RECT_SIZE
             curTop = posY * RECT_SIZE
             curBottom = posY * RECT_SIZE + RECT_SIZE
 
             curStone = self._board[posY][posX]
-
+            if not self._board[posY][posX] is None: colorIndex = 2
             self._canvas.create_rectangle(curLeft, curTop, curRight, curBottom, fill=RECT_COLORS[colorIndex], tags=["board"])
 
             if not curStone is None:
@@ -166,6 +166,7 @@ class Board:
             
             self._selectedStone.pathTree = self._brain.buildPathTree(self._selectedStone)
             self.redrawStones()
+         
 
         elif selectedTile is None and not self._selectedStone is None: # selected tile is not stone            
             self.executeMove(self._selectedStone.getMove((posY, posX)))
@@ -191,6 +192,7 @@ class Board:
         self._board[stone.posY][stone.posX] = None
         stone.posX = move.pos[1]
         stone.posY = move.pos[0]
+        stone.origin = move.pos # Ausführung eines Zuges muss persistent sein!
         stone.isSelected = False
         self._selectedStone = None
         
