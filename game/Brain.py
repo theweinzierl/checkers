@@ -9,7 +9,6 @@ class Brain:
 
     def __init__(self, board) -> None:
         self._boardObj = board
-        self._curTeam = None
         self._max = None
 
     class CollisionType(Enum):
@@ -110,12 +109,16 @@ class Brain:
 
             stone.pathTree = self.buildPathTree(stone)
             for move in stone.moves:
+                self.evaluate(move)
                 moveable.append(move)
 
         return moveable
         
 
     def max(self, parentMove: Move, stones: list, board, depth: int) -> Move:
+
+        if depth == 0:
+            return parentMove
         
         moveables = self.getPossibleMoves(stones)
 
@@ -123,33 +126,36 @@ class Brain:
         if parentMove is None:
             obligateMove = None
             for move in moveables:
-                if move.metric > 1000: # Schlagzwang!
+                if len(move.jumpedStones) != 0: # Schlagzwang!
                     if (obligateMove is None or obligateMove.metric < move.metric):
                         obligateMove = move
             if not obligateMove is None:
                 self._max = obligateMove
                 return 
 
-        if len(moveables) == 0 or depth == 0:
+        if len(moveables) == 0:
             return parentMove 
         
         maxMove = None
-        for move in moveables:
+        for move in moveables:            
             self.simExecuteMove(move, board)
             minMove = self.min(move, self.changeTurn(stones), board, depth - 1)            
             self.undoSimExecuteMove(move, board)
-            if (maxMove is None or maxMove.metric < minMove.metric) and parentMove is None:
+            if (maxMove is None or maxMove.metric > minMove.metric) and parentMove is None:
                 maxMove = minMove
                 self._max = move
         
-        moveables.sort(key=lambda x: x.metric)
+        moveables.sort(key=lambda x: x.metric, reverse=True)
         return moveables[0]
     
     def min(self, parentMove: Move, stones: list, board, depth: int) -> Move:
         
+        if depth == 0:
+            return parentMove
+
         moveables = self.getPossibleMoves(stones)
 
-        if len(moveables) == 0 or depth == 0:
+        if len(moveables) == 0:
             return parentMove 
         
         for move in moveables:
@@ -157,7 +163,7 @@ class Brain:
             self.max(move, self.changeTurn(stones), board, depth - 1)            
             self.undoSimExecuteMove(move, board)
 
-        moveables.sort(key=lambda x: x.metric, reverse=True)
+        moveables.sort(key=lambda x: x.metric)
         return moveables[0]
 
 
@@ -189,3 +195,66 @@ class Brain:
             return self._boardObj._playerB
         else:
             return self._boardObj._playerA
+
+    def evaluate(self, move) -> None:
+        tmpMetric = 0
+
+        # Sprung in gefährliche Position?
+        if self.isHarakiriMove(move):
+           tmpMetric -= 5000
+        
+        # Anzahl der übersprungenen Steine
+        noOfJumpedStones = len(move._jumpedStones)
+        tmpMetric += noOfJumpedStones * 1000 
+
+        # Sprung ins Zentrum?
+        if move.isCenterJump():
+            tmpMetric += 100
+        
+        # King-Sprung? Nur relevant, wenn noch kein King!
+        if move.isKingJump() and move._stone.type != 2: # 2 => King
+            tmpMetric += 200
+
+        # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster
+        tmpMetric += random.randrange(0,50)      
+
+        move._metric = tmpMetric
+
+    def isHarakiriMove(self, move) -> bool:
+        stone = move.stone
+        orientation = self.getPlayerOrientation(stone.team)
+
+        neigbohrs = [(move.pos[0] + 1 , move.pos[1] - 1), (move.pos[0] + 1, move.pos[1]  + 1), (move.pos[0] - 1, move.pos[1] - 1), (move.pos[0] - 1, move.pos[1] + 1)]
+        diagonal = [(move.pos[0] - 1 , move.pos[1] + 1 ), (move.pos[0] - 1, move.pos[1] - 1), (move.pos[0] + 1, move.pos[1] + 1), (move.pos[0] + 1, move.pos[1] - 1)]
+
+        # für jede Position prüfen, ob dort ein gegnerischer Stein liegt
+        for i in range(len(neigbohrs)):
+
+            curPos = neigbohrs[i]
+            curDiagonal = diagonal[i]
+
+            if not self.checkIndexInRange(curPos): continue # Position liegt nicht mehr auf dem Brett
+            if not self.checkIndexInRange(curDiagonal): continue # Position liegt nicht mehr auf dem Brett
+           
+            if not self._boardObj._board[curPos[0]][curPos[1]] is None:
+                # benachbarten Stein gefunden
+                neigbohrStone = self._boardObj._board[curPos[0]][curPos[1]]
+
+                if neigbohrStone.team != move.stone.team:
+                    # benachbarter Stein ist Gegner
+                   
+                    if curPos[0] + 1 * orientation == move.pos[0]:
+                        # Gegner liegt hinter dem Stein
+                        # prüfen, ob König, ansonsten kann Gegner nicht schlagen > Position wäre sicher
+
+                        if neigbohrStone.type == Stone.Type.Normal:
+                            continue
+                        
+                    if self._boardObj._board[curDiagonal[0]][curDiagonal[1]] is None:
+                        # falls diagonal frei > Gefahr!
+                        return True
+                    elif self._boardObj._board[curDiagonal[0]][curDiagonal[1]] == stone:
+                        # oder falls durch den zu bewegenden Stein belegt 
+                        return True
+
+        return False

@@ -21,11 +21,12 @@ def showMenu() -> None:
 
         title = Label(canvasMenu, text="Simple-Checkers", font=("bold", 30))
         
-        btnBotGame = Button(canvasMenu, text="Start Bot-Game", width=40,
+        btnBotGame = Button(canvasMenu, text="Starte KI gegen KI", width=40,
                     height=3, bd="3", command=lambda: showGame(Board.Mode.BotGame))
-        btn1on1 = Button(canvasMenu, text="Start 1-on-1", width=40,
+        btn1on1 = Button(canvasMenu, text="Starte Mensch gegen KI", width=40,
                     height=3, bd="3", command=lambda: showGame(Board.Mode.OneOnOne))
   
+        board = None
         title.pack()
         btnBotGame.pack()
         btn1on1.pack()

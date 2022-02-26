@@ -52,7 +52,7 @@ class Move:
         
         # King-Sprung? Nur relevant, wenn noch kein King!
         if self.isKingJump() and self._stone.type != 2: # 2 => King
-            tmpMetric += 100
+            tmpMetric += 200
 
         # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster
         tmpMetric += random.randrange(0,50)

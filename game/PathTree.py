@@ -16,7 +16,7 @@ class PathTree:
         for i in range(0, len(leafes)):
             tmpMove = Move(leafes[i].pos, self._stone)
             self.getMoveRec(tmpMove, leafes[i])
-            tmpMove.evaluate()
+            # tmpMove.evaluate()
             preselectedMoves.append(tmpMove)
 
         # filter for obligated moves
