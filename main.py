@@ -1,5 +1,4 @@
-# Checkers-Implementierung in Python
-# Das Programm verwendet einen einfachen MiniMax-Algorithmus
+# Dient als Einstiegspunkt. Zeigt das Hauptfenster an und startet die Mainloop von Tkinter.
 
 from game.Board import *
 from game.Stone import *
@@ -26,13 +25,13 @@ def showMenu() -> None:
         btn1on1 = Button(canvasMenu, text="Starte Mensch gegen KI", width=40,
                     height=3, bd="3", command=lambda: showGame(Board.Mode.OneOnOne))
   
-        board = None
         title.pack()
         btnBotGame.pack()
         btn1on1.pack()
     
     if not canvasBoard is None:
         canvasBoard.pack_forget()
+        del board
         board = None
 
     if not canvasScore is None:
@@ -44,23 +43,24 @@ def showGame(mode: Board.Mode) -> None:
     global canvasMenu, canvasBoard, canvasScore, board
 
     if canvasBoard is None:
-        canvasBoard = Canvas(window, width=400, height=400)
+        
         canvasScore = Canvas(window, width=400, height=200)
 
         btnCancel = Button(canvasScore, text="Zurück", width=40,
                     height=3, bd="3", command=showMenu)
 
-        btnCancel.pack()
+        # btnCancel.pack() > Zurück-Funktion macht leider Probleme > erzeugt "Geister-Spieler"
         
 
     if not canvasMenu is None:
         canvasMenu.pack_forget()
 
+    canvasBoard = Canvas(window, width=400, height=400)
     board = Board(canvasBoard, mode, window)
     canvasBoard.bind("<Button-1>", board.onClick)
     board.start()
     
-    canvasScore.pack()
+    #canvasScore.pack()
     canvasBoard.pack()
 
 showMenu()

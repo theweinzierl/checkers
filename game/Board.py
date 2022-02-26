@@ -1,4 +1,3 @@
-
 from .Stone import *
 from tkinter import *
 from enum import Enum
@@ -6,8 +5,6 @@ from .Move import *
 from .PathTree import *
 from .settings import *
 from .Brain import *
-
-
 
 
 class Board: 
@@ -25,7 +22,7 @@ class Board:
         self._mode = mode
         self._window = window
 
-        self._score = {PLAYER_A: 0, PLAYER_B: 0} # Player A => Computer; Player B => Human
+        self._score = {PLAYER_A: 0, PLAYER_B: 0} # Player A => Computer; Player B => Mensch
         self._brain = Brain(self)
 
     
@@ -35,9 +32,6 @@ class Board:
         
         if self._mode == Board.Mode.BotGame:
             self._window.after(BOT_DELAY, lambda: self._brain.invokeAI(self._playerB))
-
-
-
 
     """
         Initialisiert das Spielbrett
@@ -176,6 +170,9 @@ class Board:
             self.executeMove(self._selectedStone.getMove((posY, posX)))
 
 
+    """
+        Führt einen Sprung aus.
+    """
     def executeMove(self, move: Move) -> None:
 
         if move is None: return
@@ -184,14 +181,11 @@ class Board:
 
         self._score[stone.team] += len(move.jumpedStones)
 
-        # vanish jumped stones
+        # übersprüngene Steine verstecken
         for jumpedStone in move.jumpedStones:
             jumpedStone.isVisible = False
             self._board[jumpedStone.posY][jumpedStone.posX] = None           
 
-
-       # if stone.team == PLAYER_B:
-            # valid move!
         self._board[move.pos[0]][move.pos[1]] = stone
         self._board[stone.posY][stone.posX] = None
         stone.posX = move.pos[1]
@@ -200,7 +194,6 @@ class Board:
         stone.isSelected = False
         self._selectedStone = None
         self.changeTurn()
-
 
     def changeTurn(self):
         self.redrawStones()

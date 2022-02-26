@@ -12,33 +12,19 @@ class PathTree:
 
     def getMoves(self) -> list:
         leafes = self.getLeafes()
-        preselectedMoves = []
+        moves = []
         for i in range(0, len(leafes)):
             tmpMove = Move(leafes[i].pos, self._stone)
             self.getMoveRec(tmpMove, leafes[i])
-            # tmpMove.evaluate()
-            preselectedMoves.append(tmpMove)
+            moves.append(tmpMove)
 
-        # filter for obligated moves
-        possibleMoves = []
-        obligateMoves = []
-        for i in range(0, len(preselectedMoves)):
-            if preselectedMoves[i].metric == 0:
-                possibleMoves.append(preselectedMoves[i])
-            else:
-                obligateMoves.append(preselectedMoves[i])
-
-        if len(obligateMoves) != 0:
-            return obligateMoves
-        else:
-            return possibleMoves
+        return moves
         
 
 
     def getMoveRec(self, move: Move, node) -> None:
         if not node.jumpedStone is None:
             move.jumpedStones.append(node.jumpedStone)
-            move.metric += 1
         
         if not node.parent is None:
             self.getMoveRec(move, node.parent)

@@ -3,7 +3,6 @@ from .PathTree import *
 from .Stone import *
 from .Move import *
 from .settings import *
-from game import settings
 
 class Brain:
 
@@ -25,8 +24,8 @@ class Brain:
     """
         1. Mögliche Züge prüfen und zugehörigen PathTree erstellen
         buildPathTree baut rekursiv einen möglichen Sprungpfad auf. Da bei Checkers
-        mehfach Sprünge möglich sind, können die Pfade unterschiedlich lang sein.
-        Es werden nur PathTrees zu möglichen Zügen erstellt, d.h. builPathTree() stellt
+        Mehrfachsprünge möglich sind, können die Pfade unterschiedlich lang sein.
+        Es werden nur PathTrees zu möglichen Zügen erstellt, d.h. buildPathTree() stellt
         auch fest, ob ein Stein bewegt werden kann oder nicht.
     """
     def buildPathTree(self, stone: Stone) -> PathTree:
@@ -48,16 +47,16 @@ class Brain:
 
         for i in range (0, len(next)):
 
-            if not self.checkIndexInRange(next[i]): continue # position out of board
+            if not self.checkIndexInRange(next[i]): continue # Position außerhalb des Bretts
 
             col = self.checkCollision(stone, next[i][1], next[i][0])
             
-            if col == self.CollisionType.Friend: # position blocked by own stone
+            if col == self.CollisionType.Friend: # Position ist vom eigenen Team besetzt
                 continue
-            elif col == self.CollisionType.Enemy: # position blocked by enemy => jumpable?
+            elif col == self.CollisionType.Enemy: # Position ist vom Gegner besetzt => kann er übersprungen werden?
 
                 if self.checkIndexInRange(afternext[i]) and self.checkCollision(stone, afternext[i][1], afternext[i][0]) == Brain.CollisionType.Nothing:
-                    # enemy can be jumped
+                    # kann übersprungen werden
                     if depth == 0: continue
 
                     if not parent.jumpedStone is None and self._boardObj._board[next[i][0]][next[i][1]] != parent.jumpedStone:
@@ -66,13 +65,13 @@ class Brain:
 
                     tmpNode = PathTreeNode(afternext[i], parent, self._boardObj._board[next[i][0]][next[i][1]])
                     parent.add(tmpNode)
-                    self.buildPathTreeRec(tmpNode, stone, True, depth - 1) # start recursion here to find all possible moves
+                    self.buildPathTreeRec(tmpNode, stone, True, depth - 1) # Rekursion starten, um alle möglichen Sprünge zu finden
 
-                else: # enemy can not be jumped                    
+                else: # Gegner kann nicht übersprungen werden                  
                     continue
             else:
-                # if an enemy was found, only this path can be followed!
-                if not foundEnemy: parent.add(PathTreeNode(next[i], parent)) # none of the upper cases applied => normal move
+                # normaler Zug
+                if not foundEnemy: parent.add(PathTreeNode(next[i], parent)) 
 
 
     def checkIndexInRange(self, pos: tuple) -> bool:
@@ -80,7 +79,6 @@ class Brain:
         if pos[0] < 0 or pos[0] > BOARD_SIZE - 1: return False
         
         return True
-
     
     def checkCollision(self, stone: Stone, posX: int, posY: int) -> int:
     
@@ -92,6 +90,9 @@ class Brain:
         else:
             return Brain.CollisionType.Nothing
 
+    """
+        Startet einen KI-Zug
+    """
     def invokeAI(self, player):
         self._max = None
 
@@ -114,7 +115,10 @@ class Brain:
 
         return moveable
         
-
+    """
+        Max-Funktion des MiniMax-Algorithmus
+        Wenn parentMove is None > befindet sich auf der obersten Ebene!
+    """
     def max(self, parentMove: Move, stones: list, board, depth: int) -> Move:
 
         if depth == 0:
@@ -141,10 +145,16 @@ class Brain:
             self.simExecuteMove(move, board)
             minMove = self.min(move, self.changeTurn(stones), board, depth - 1)            
             self.undoSimExecuteMove(move, board)
-            if (maxMove is None or maxMove.metric > minMove.metric) and parentMove is None:
-                maxMove = minMove
-                self._max = move
-        
+            
+            if MINIMAX_DEPTH == 1:
+                if (maxMove is None or maxMove.metric < minMove.metric) and parentMove is None:
+                    maxMove = minMove
+                    self._max = move
+            else:
+                if (maxMove is None or maxMove.metric > minMove.metric) and parentMove is None:
+                    maxMove = minMove
+                    self._max = move
+
         moveables.sort(key=lambda x: x.metric, reverse=True)
         return moveables[0]
     
@@ -166,7 +176,10 @@ class Brain:
         moveables.sort(key=lambda x: x.metric)
         return moveables[0]
 
-
+    """
+        simuliert einen Zug
+        Origin eines Steins wird nicht verändert! Zug ist versibel.
+    """
     def simExecuteMove(self, move: Move, board):        
          
         for jumpedStone in move.jumpedStones:
@@ -178,7 +191,9 @@ class Brain:
         move.stone.posX = move.pos[1]
         move.stone.posY = move.pos[0]
 
-
+    """
+        Macht einen simulierten Zug rückgängig.
+    """
     def undoSimExecuteMove(self, move: Move, board):
          
         for jumpedStone in move.jumpedStones:
@@ -196,6 +211,10 @@ class Brain:
         else:
             return self._boardObj._playerA
 
+
+    """
+        Evaluiert einen Spielzug
+    """
     def evaluate(self, move) -> None:
         tmpMetric = 0
 
@@ -218,8 +237,12 @@ class Brain:
         # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster
         tmpMetric += random.randrange(0,50)      
 
-        move._metric = tmpMetric
+        move.metric = tmpMetric
 
+    """
+        Prüft, ob es sich bei dem Zug, um einen Sprung ins Verderben handelt, d.h., ob der Stein
+        dann vom Gegner geschlagen werden könnte.
+    """
     def isHarakiriMove(self, move) -> bool:
         stone = move.stone
         orientation = self.getPlayerOrientation(stone.team)

@@ -55,9 +55,7 @@ class Move:
             tmpMetric += 200
 
         # Randomize > keine gleichen Metriken; da ansonsten tlw. vorhersehbare Bewegungsmuster
-        tmpMetric += random.randrange(0,50)
-
-        
+        tmpMetric += random.randrange(0,50)        
 
         self._metric = tmpMetric
 
