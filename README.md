@@ -2,6 +2,7 @@
 
 ## About
 Simple Checkers ist eine einfache Checkers-Ausführung, die in Python geschrieben wurde. Es handelt sich um kein fertiges Spiel, sondern dient eher der beispielhaften Implementierung eines MiniMax-Algorithmus.
+
 ![demoscreen](demoscreen.png)
 
 ## Projektbeschreibung
